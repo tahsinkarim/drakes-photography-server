@@ -27,6 +27,15 @@ async function run(){
             res.send(result)
         })
 
+        //Get first 3 service
+        app.get('/service', async (req,res)=> {
+            const query = {}
+            const cursor = photoCollection.find(query).limit(3)
+            const result = await cursor.toArray()
+            res.send(result)
+        })
+        
+
         //Get service by id
         app.get('/services/:id', async (req,res)=> {
             const id = req.params.id
