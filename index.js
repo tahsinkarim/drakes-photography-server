@@ -47,7 +47,7 @@ async function run(){
         app.get('/reviews/:id', async (req,res)=> {
             const id = req.params.id
             const query = { service: id}
-            const cursor = reviewCollection.find(query)
+            const cursor = reviewCollection.find(query).sort( {date : -1})
             const result = await cursor.toArray()
             res.send(result)
         })
