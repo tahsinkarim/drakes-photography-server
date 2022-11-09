@@ -19,7 +19,13 @@ async function run(){
     try{
         const photoCollection = client.db('photographer').collection('photoService')
         const reviewCollection = client.db('photographer').collection('reviews')
-
+        //Create new service
+        app.post('/services', async (req,res)=>{
+            const data = req.body 
+            const service = {...data, date: new Date()}
+            const result = await photoCollection.insertOne(service)
+            res.send(result)
+        } )
         //Get all services
         app.get('/services', async (req,res)=> {
             const query = {}
@@ -31,14 +37,15 @@ async function run(){
         //Get first 3 service
         app.get('/service', async (req,res)=> {
             const query = {}
-            const cursor = photoCollection.find(query).limit(3)
+            const cursor = photoCollection.find(query).sort({date: -1}).limit(3)
             const result = await cursor.toArray()
             res.send(result)
         })
         //Create New review
         app.post('/reviews', async (req, res)=>{
-            const review = req.body
-            console.log(review)
+            const data = req.body
+            const review = {...data, date: new Date()}
+            
             const result = await reviewCollection.insertOne(review)
             res.send(result)
         })
@@ -50,6 +57,32 @@ async function run(){
             const cursor = reviewCollection.find(query).sort( {date : -1})
             const result = await cursor.toArray()
             res.send(result)
+        })
+
+        //Delete reviews by Id
+        app.delete('/reviews/:id', async (req, res)=> {
+            const id = req.params.id 
+            const query = {_id: ObjectId(id)}
+            const result = await reviewCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        //Update review
+        app.patch('/update/:id', async (req,res)=>{
+            const id = req.params.id
+            const review = req.body
+            
+            const query = {_id: ObjectId(id)}
+            const option = {upsert : true}
+            const updateReview = {
+                $set: {
+                    date: new Date(),
+                    review: review.review
+                }
+            }
+            const result = await reviewCollection.updateOne(query, updateReview, option)
+            res.send(result)
+
         })
 
         //Get review by user query
