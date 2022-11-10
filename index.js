@@ -1,6 +1,7 @@
 const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || 5000;
 require('dotenv').config()
@@ -14,11 +15,31 @@ app.use(express.json())
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.k6fgqcn.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+function verifyJWT(req, res, next){
+    const authHeader = req.headers.authorization
+    if(!authHeader){
+        res.status(401).send({message: 'unauthorized access'})
+    }
+    const token = authHeader.split(" ")[1]
+    jwt.verify(token, process.env.SECRET_TOKEN, function(err, decoded){
+        if(err){
+            res.status(401).send({message: 'unauthorized access'})
+        }
+        req.decoded = decoded
+        next()
+    })
+}
 //CRUD Functions
 async function run(){
     try{
         const photoCollection = client.db('photographer').collection('photoService')
         const reviewCollection = client.db('photographer').collection('reviews')
+        //JWT
+        app.post('/jwt', (req, res)=> {
+            const user = req.body
+            const token = jwt.sign(user, process.env.SECRET_TOKEN, {expiresIn: '2h'})
+            res.send({token})
+        })
         //Create new service
         app.post('/services', async (req,res)=>{
             const data = req.body 
@@ -85,8 +106,13 @@ async function run(){
 
         })
 
-        //Get review by user query
-        app.get('/reviews', async (req,res)=> {
+        //Get review by user email
+        app.get('/reviews', verifyJWT, async (req,res)=> {
+            const decoded = req.decoded
+            if(decoded.email !== req.query.user){
+                res.status(403).send({message: 'unauthorized access'})
+            }
+            
             const user = req.query.user
             const query = { user : user}
             const cursor = reviewCollection.find(query).sort( {date : -1})
